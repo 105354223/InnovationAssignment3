@@ -18,11 +18,12 @@ import pandas as pd
 # ---- Load model once ----
 _MODEL = joblib.load("hdfs_model.joblib")
 
+_LAST_PARSED: pd.DataFrame | None = None
+
 
 # ---- Regex patterns (same as hadoop_parser.py + hadoop_preprocessing.py) ----
 _HDFS_LINE = re.compile(r"^(\d{6}) (\d{6}) (\d+) (\S+) (\S+): (.*)$")
 _BLK       = re.compile(r"(blk_-?\d+)")
-
 _BLOCK_ID  = re.compile(r"blk_-?\d+")
 _IP_PORT   = re.compile(r"\d+\.\d+\.\d+\.\d+:\d+")
 _IP        = re.compile(r"\d+\.\d+\.\d+\.\d+")
@@ -110,11 +111,20 @@ def _build_feature_table(df: pd.DataFrame) -> pd.DataFrame:
         bag, on="blockId", how="left"
     )
 
-    # Align to exactly the columns the model was trained on
-    expected = list(_MODEL.named_steps["model"].feature_names_in_)
+    # The trained pipeline expects 68 event columns (event_0 .. event_67),
+    # regardless of how many unique templates appear in this particular
+    # uploaded file. Missing events are filled with 0, which is correct:
+    # those events didn't occur in this file.
+    EXPECTED_EVENT_IDS = 68
+    expected = (
+        ["length", "n_unique", "first_event", "last_event"]
+        + [f"event_{i}" for i in range(EXPECTED_EVENT_IDS)]
+    )
+
     for col in expected:
         if col not in feats.columns:
             feats[col] = 0
+
     return feats[["blockId"] + expected]
 
 
@@ -131,6 +141,9 @@ class AnomalyModel:
         """
         text = raw_bytes.decode("utf-8", errors="replace")
         df = _parse(text)
+        global _LAST_PARSED
+        df = _parse(text)
+        _LAST_PARSED = df          # keep for /session/{block_id} lookups
         if df.empty:
             return {
                 "summary": {"total_sessions": 0, "normal": 0, "anomaly": 0},
@@ -154,6 +167,8 @@ class AnomalyModel:
                 "event_count": int(feats["length"].iloc[i]),
             })
 
+        sessions.sort(key=lambda s: s["anomaly_score"], reverse=True)
+
         anomaly_count = sum(1 for s in sessions if s["label"] == "Anomaly")
         return {
             "summary": {
@@ -161,5 +176,15 @@ class AnomalyModel:
                 "normal": len(sessions) - anomaly_count,
                 "anomaly": anomaly_count,
             },
-            "sessions": sessions,
+            "sessions": sessions[:100],     # only the 100 most anomalous
+            "session_total": len(sessions),
         }
+    
+    def get_session_detail(self, block_id: str) -> dict:
+        """Return the raw log messages for one block from the last upload."""
+        if _LAST_PARSED is None or _LAST_PARSED.empty:
+            return {"error": "No file has been uploaded yet"}
+        lines = _LAST_PARSED[_LAST_PARSED["blockId"] == block_id]["message"].tolist()
+        if not lines:
+            return {"error": f"No messages found for {block_id}"}
+        return {"block_id": block_id, "messages": lines[:50]}

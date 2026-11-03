@@ -21,3 +21,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+../HDFS_small.log
+
+../backend/model_test.py
