@@ -68,3 +68,19 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+
+# 2.6 Questions 
+1. Who would want to attack our application? 
+The main attackers would be malicious users or intruders who want to hide their activities from being deteected. This could potentially include
+hackers who have gained access to a system or insiders attempting to cover up unauthorised actions.
+
+2. What are they trying to achieve? 
+Their main goal would be to avoid detection by making malicious activities appear normal within the logs. Attackers may also attempt to manipulate the results. access sensitive infomration which could be contained in the log files or even disrupt the application so that it cannot detect suspicious behaviour.
+
+3. What can they actually do to it?
+Attackers could:
+    Mainipulate log entries: Insert fake or misleading log messages to hide suspicious activity
+    Inject malicious content: Include harmful inputs within log lines to exploit weaknesses in the application's processing or display.
+    Upload malicious files: Submit specfically crafted or oversized files to crash the application or consume excessive resources.
+    Access sensitive infromation: Attempt to iew log data or detection results without authorisation.
