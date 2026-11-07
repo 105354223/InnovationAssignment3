@@ -3,6 +3,14 @@ import os
 import re
 from pathlib import PurePosixPath
 from fastapi.responses import JSONResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+# this is for the second security feature, the basic rate limiter
+limiter = Limiter(
+    key_func=get_remote_address,
+    enabled=os.getenv("HARDENING", "on") == "on",
+)
 
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", 25 * 1024 * 1024))
 # This is to check for unsually large line lengths so if we have a log file 

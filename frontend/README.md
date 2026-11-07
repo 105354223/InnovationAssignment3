@@ -87,7 +87,7 @@ Attackers could:
 
 
 
-## Defence: Unsafe file upload (Section 2.7, Intermediate)
+## Section 2.7, Intermediate Unsafe File Upload
 
 ### Threat addressed
 The `/analyze` endpoint accepts a log file. An attacker bypassing the
@@ -108,25 +108,14 @@ enforced on the back end in `backend/security.py`.
 
 All rejections use the shared error format `{"error": {"code": ..., "message": ...}}`.
 
-### How to run the demonstration
 
-**Terminal 1 (server)** from the `backend` folder:
-
-| Mode | Command Prompt | Git Bash |
-|---|---|---|
-| Defence ON (default) | `set HARDENING=on` then `python main.py` | `HARDENING=on python main.py` |
-| Defence OFF | `set HARDENING=off` then `python main.py` | `HARDENING=off python main.py` |
-
-Check the variable with `echo %HARDENING%` (Command Prompt). Any value other than `on` disables the defence.
 
 **Terminal 2 (attacks)** in Git Bash, from `backend/testing_files`:
 
-| File | Purpose |
-|---|---|
-| `sample.log` | valid HDFS log (control) |
-| `big.log` | 30 MB file, over the limit |
-| `logo.png` | PNG used as fake log |
-| `mixed.log` | valid lines followed by junk |
+ `sample.log`  valid HDFS log (control) 
+ `big.log`  30 MB file, over the limit 
+ `logo.png`  PNG used as fake log 
+ `mixed.log`  valid lines followed by junk 
 
 ```bash
 # 0. Control: must return 200
@@ -138,7 +127,7 @@ curl -i -F "file=@big.log" http://127.0.0.1:8000/analyze
 # 1b. Oversized (chunked, no honest Content-Length)
 curl -i -H "Transfer-Encoding: chunked" -F "file=@big.log" http://127.0.0.1:8000/analyze
 
-# 2. Crafted filename
+# 2. Fake filename
 curl -i -F "file=@sample.log;filename=../../etc/passwd" http://127.0.0.1:8000/analyze
 
 # 3. Wrong content claiming to be a log
@@ -170,3 +159,52 @@ I tested this purely on the backend but have nesured that the sample that worked
 **File too large (28.6 MB). Max 25 MB.** which im happy about and make sure to show in the video!
 But the empty file doesn't properly return an error for the front end, just stating a 
 error in analyzing file, something to fix but its 4am and im sleepy
+
+### 2.7 Basic rate limiting
+
+pip install slowapi
+
+
+### Start the server in each mode (not at the same time)
+Run from the `backend` folder in a **separate terminal** from the attacks.
+
+Defences ON (default) `python main.py`
+Defences OFF `set HARDENING=off` then `python main.py` 
+
+`HARDENING=off` disables the size limit, filename and content validation, and
+the rate limiter, so the attacks succeed.
+
+### Run the attacks
+From `backend/testing_files` in Git Bash:
+
+```bash
+# Control: must return 200
+curl -i -F "file=@sample.log" http://127.0.0.1:8000/analyze
+
+# Upload defence
+curl -i -F "file=@big.log" http://127.0.0.1:8000/analyze
+curl -i -H "Transfer-Encoding: chunked" -F "file=@big.log" http://127.0.0.1:8000/analyze
+curl -i -F "file=@sample.log;filename=../../etc/passwd" http://127.0.0.1:8000/analyze
+curl -i -F "file=@logo.png;filename=hdfs.log;type=text/plain" http://127.0.0.1:8000/analyze
+curl -i -F "file=@mixed.log" http://127.0.0.1:8000/analyze
+curl -i -F "file=@sample.log;filename=sample.log.exe" http://127.0.0.1:8000/analyze
+curl -i -F "file=@empty.log" http://127.0.0.1:8000/analyze
+
+# Rate limiting defence
+for i in $(seq 1 8); do
+  curl -s -o /dev/null -w "%{http_code}\n" -F "file=@sample.log" http://127.0.0.1:8000/analyze
+done
+
+# Rate limiting variation: spoofed X-Forwarded-For
+for i in $(seq 1 8); do
+  curl -s -o /dev/null -w "%{http_code}\n" -H "X-Forwarded-For: 10.0.0.$i" \
+    -F "file=@sample.log" http://127.0.0.1:8000/analyze
+done
+```
+
+### Expected results
+Flood (8 requests) 200 x5, then 429 x3 (if defences off then 200 x8)
+Spoofed `X-Forwarded-For`200 x5, then 429 x3  (same as above if done correctly)
+
+Every rejection uses the shared format `{"error": {"code": ..., "message": ...}}`.
+A `429` also carries a `Retry-After` header.
