@@ -1,10 +1,14 @@
 # main.py
-import re
-from fastapi import FastAPI, UploadFile, File, HTTPException
+import os
+from fastapi import FastAPI, UploadFile, File, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import JSONResponse
 from model import AnomalyModel
+from security import (MAX_UPLOAD_BYTES, SizeLimitMiddleware, UploadRejected,
+                      error_body, validate_filename, validate_log_content)
 
-MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+HARDENING = os.getenv("HARDENING", "on") == "on"
 
 app = FastAPI()
 
@@ -15,56 +19,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# this is so we can run the file with hardening off, this will allow the attacks to work
+#in the demonstration video
+if HARDENING:
+    app.add_middleware(SizeLimitMiddleware, max_bytes=MAX_UPLOAD_BYTES)
+
+
+@app.exception_handler(UploadRejected)
+async def upload_rejected(request: Request, exc: UploadRejected):
+    return JSONResponse(error_body(exc.code, exc.message), status_code=exc.status)
+
+@app.post("/analyze")
+async def analyze(file: UploadFile = File(...)):
+    raw = await file.read()
+    if HARDENING:
+        validate_filename(file.filename)
+        validate_log_content(raw)
+    return await run_in_threadpool(model.predict, raw)
 
 model = AnomalyModel()
-
-_HDFS_LINE_PREFIX = re.compile(r"^\d{6} \d{6} ")
-
-
-def _looks_like_hdfs_log(text: str, sample_size: int = 20) -> bool:
-    lines = [ln for ln in text.splitlines()[:sample_size * 3] if ln.strip()][:sample_size]
-    if not lines:
-        return False
-    matches = sum(1 for ln in lines if _HDFS_LINE_PREFIX.match(ln))
-    return matches / len(lines) >= 0.8
-
 
 @app.get("/")
 async def root():
     return {"message": "Log Anomaly Detection API"}
 
-
-@app.post("/analyze")
-async def analyze(file: UploadFile = File(...)):
-    # 1. Read the file (with size cap)
-    raw = await file.read()
-    if len(raw) > MAX_UPLOAD_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File too large ({len(raw) / 1_048_576:.1f} MB). "
-                   f"Limit is {MAX_UPLOAD_BYTES / 1_048_576:.0f} MB.",
-        )
-
-    if len(raw) == 0:
-        raise HTTPException(status_code=400, detail="Empty file")
-
-    # 2. Check the file looks like an HDFS log
-    text = raw.decode("utf-8", errors="replace")
-    if not _looks_like_hdfs_log(text):
-        raise HTTPException(
-            status_code=400,
-            detail="File does not look like an HDFS log "
-                   "(expected lines beginning with a 6-digit YYMMDD timestamp).",
-        )
-    # 3. Run the model
-    try:
-        return model.predict(raw)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {type(e).__name__}: {e}")
-    
-    return result
 
 @app.get("/session/{block_id}")
 async def session_detail(block_id: str):
