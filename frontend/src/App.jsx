@@ -72,7 +72,10 @@ function SummaryChart({ summary }) {
 function SessionsTable({ sessions }) {
   const [expandedId, setExpandedId] = useState(null);
   const [detail, setDetail] = useState({});
-
+  
+  // calls GET/session/{block_id} on backend
+  // if user expands too many rows, error 429 shows
+  // the catch shows "failed to load detail" and swollows 429 error
   const toggleRow = async (blockId) => {
     if (expandedId === blockId) { setExpandedId(null); return; }
     setExpandedId(blockId);
@@ -138,6 +141,10 @@ export default function App() {
 
   const MAX_MB = 25;
 
+  // POST contains file field matching fastapi parameter
+  // backend rate limit is 5/minute, error analysing files after 6 or more attempts within a minute
+  // Cleint max_mb check is UX only
+  // error message extraction for errors
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
