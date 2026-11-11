@@ -1,4 +1,3 @@
-# model.py
 """
 Model wrapper for the HDFS anomaly detection web app.
 
@@ -15,13 +14,13 @@ import joblib
 import pandas as pd
 
 
-# ---- Load model once ----
+# Load model
 _MODEL = joblib.load("hdfs_model.joblib")
 
 _LAST_PARSED: pd.DataFrame | None = None
 
 
-# ---- Regex patterns (same as hadoop_parser.py + hadoop_preprocessing.py) ----
+# Regex model patterns
 _HDFS_LINE = re.compile(r"^(\d{6}) (\d{6}) (\d+) (\S+) (\S+): (.*)$")
 _BLK       = re.compile(r"(blk_-?\d+)")
 _BLOCK_ID  = re.compile(r"blk_-?\d+")
@@ -32,7 +31,7 @@ _NUM       = re.compile(r"\d+")
 
 
 def _template(msg: str) -> str:
-    """Mask variable parts so equivalent events collapse to one string."""
+    """ Mask variable parts so equivalent events collapse to one string. """
     msg = _BLOCK_ID.sub("blk_<*>", msg)
     msg = _IP_PORT.sub("<IP:PORT>", msg)
     msg = _IP.sub("<IP>", msg)
@@ -42,7 +41,7 @@ def _template(msg: str) -> str:
 
 
 def _parse(text: str) -> pd.DataFrame:
-    """Parse raw HDFS log text into a DataFrame of (date, time, blockId, message)."""
+    """ Parse raw HDFS log text into a DataFrame of (date, time, blockId, message). """
     rows = []
     for line in text.splitlines():
         m = _HDFS_LINE.match(line)
@@ -62,7 +61,7 @@ def _parse(text: str) -> pd.DataFrame:
 
 
 def _build_feature_table(df: pd.DataFrame) -> pd.DataFrame:
-    """Turn parsed lines into the per-block feature table the model expects."""
+    """ Turn parsed lines into the per-block feature table the model expects. """
     df = df.copy()
     df["timestamp"] = pd.to_datetime(
         df["date"] + df["time"],
