@@ -1,78 +1,34 @@
-# Getting Started with Create React App
-
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
-
-## Available Scripts
-
-In the project directory, you can run:
-
-### `npm start`
-
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
-
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
-
-### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
 
 
-# 2.6 Questions 
+## How to start the backend
+
+To set up the backend ensure you have run these commands:
+
+pip install -r requirements.txt
+python main.py
+
+By deafult our system runs with the defenses enabled so if you wish to
+test without any defenses running ensure you run HARDENING="off" before running the python main.py
+
+The back end is running when you see `Uvicorn running on http://127.0.0.1:8000`.
+Leave this terminal open.
+
+
+## how to start the front end
+
+Ensure you're inside the frontend folder and then
+
+npm install
+
+npm start
+
+The app opens at http://localhost:3000. If it does not open by itself, go to that
+address in your browser. Leave this terminal open too.
+
+
+# 2.6 Threat Model
 1. Who would want to attack our application? 
-The main attackers would be malicious users or intruders who want to hide their activities from being deteected. This could potentially include
+The main attackers would be malicious users or intruders who want to hide their activities from being detected by their log files. This could potentially include
 hackers who have gained access to a system or insiders attempting to cover up unauthorised actions.
 
 2. What are they trying to achieve? 
@@ -80,10 +36,10 @@ Their main goal would be to avoid detection by making malicious activities appea
 
 3. What can they actually do to it?
 Attackers could:
-    Mainipulate log entries: Insert fake or misleading log messages to hide suspicious activity
-    Inject malicious content: Include harmful inputs within log lines to exploit weaknesses in the application's processing or display.
-    Upload malicious files: Submit specfically crafted or oversized files to crash the application or consume excessive resources.
-    Access sensitive infromation: Attempt to iew log data or detection results without authorisation.
+    **Mainipulate log entries:** Insert fake or misleading log messages to hide suspicious activity
+    **Inject malicious content:** Include harmful inputs within log lines to exploit weaknesses in the application's processing or display.
+    **Upload malicious files:** Submit specfically crafted or oversized files to crash the application or consume excessive resources.
+    Access sensitive infromation: Attempt to view log data or detection results without authorisation.
 
 
 
@@ -112,10 +68,9 @@ All rejections use the shared error format `{"error": {"code": ..., "message": .
 
 **Terminal 2 (attacks)** in Git Bash, from `backend/testing_files`:
 
- `sample.log`  valid HDFS log (control) 
- `big.log`  30 MB file, over the limit 
- `logo.png`  PNG used as fake log 
- `mixed.log`  valid lines followed by junk 
+`sample.log`  valid HDFS log (control) 
+`big.log`  30 MB file, over the limit 
+`logo.png`  PNG used as fake log 
 
 ```bash
 # 0. Control: must return 200
@@ -144,18 +99,18 @@ Run every command once with the defence **OFF**, then again with it **ON**.
 
 ### Results (hopefully if it works on yours)
 
-| Test | Status | `error.code` 
-|---|---|---|---|
-| 0. Control | 200 | n/a 
-| 1. Oversized | 413 | `payload_too_large` 
-| 1b. Oversized, chunked | 413 | `payload_too_large` 
-| 2. Crafted filename | 400 | `invalid_filename` 
-| 3. PNG as log | 400 | `invalid_content`
-| 4a. `sample.log.exe` | 400 | `unsupported_file_type`
-| 4b. Empty file | 400 | `empty_file`
+ Test, Status, `error.code` 
+
+0. Control  200  n/a 
+1. Oversized  413  `payload_too_large` 
+1b. Oversized, chunked  413  `payload_too_large` 
+2. Crafted filename  400  `invalid_filename` 
+3. PNG as log  400  `invalid_content`
+4a. `sample.log.exe`  400  `unsupported_file_type`
+4b. Empty file  400  `empty_file`
 
 ## TO CHECK
-I tested this purely on the backend but have nesured that the sample that worked before works still, additionally the frontend properly gives an error matching what the issue with the file is, for example trying to upload the big.log will properly give the 
+I tested this purely on the backend but have ensured that the sample that worked before works still, additionally the frontend properly gives an error matching what the issue with the file is, for example trying to upload the big.log will properly give the 
 **File too large (28.6 MB). Max 25 MB.** which im happy about and make sure to show in the video!
 But the empty file doesn't properly return an error for the front end, just stating a 
 error in analyzing file, something to fix but its 4am and im sleepy
@@ -166,7 +121,7 @@ pip install slowapi
 
 
 ### Start the server in each mode (not at the same time)
-Run from the `backend` folder in a **separate terminal** from the attacks.
+Run from the `backend` folder in a separate terminal from the attacks.
 
 Defences ON (default) `python main.py`
 Defences OFF `set HARDENING=off` then `python main.py` 
@@ -206,5 +161,3 @@ done
 Flood (8 requests) 200 x5, then 429 x3 (if defences off then 200 x8)
 Spoofed `X-Forwarded-For`200 x5, then 429 x3  (same as above if done correctly)
 
-Every rejection uses the shared format `{"error": {"code": ..., "message": ...}}`.
-A `429` also carries a `Retry-After` header.
