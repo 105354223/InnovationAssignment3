@@ -1,4 +1,3 @@
-# security.py
 import os
 import re
 from pathlib import PurePosixPath

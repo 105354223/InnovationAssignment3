@@ -161,3 +161,18 @@ done
 Flood (8 requests) 200 x5, then 429 x3 (if defences off then 200 x8)
 Spoofed `X-Forwarded-For`200 x5, then 429 x3  (same as above if done correctly)
 
+
+### System Architecture Diagram
+
+This is mostly just going a flow chart for a user as the system is pretty narrow in scope
+
+
+ User --> React front end (localhost:3000) --POST/analyze GET /session{blockid}--> backend
+
+ FastAPIbackend CORS --> security.py (sizelimit -> ratelimit -> upload verification)--> AnomolyModel.predict -->main.py --> app.jsx to then display the results back to the user.
+
+ Model <-- hdfs_model.joblib at session start 
+
+ ### Documentation
+
+ To access the /docs page from FastAPI ensure the backend is loaded and then navigate to http://127.0.0.1:8000/docs 
